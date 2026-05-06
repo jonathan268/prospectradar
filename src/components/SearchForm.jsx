@@ -51,11 +51,11 @@ export default function SearchForm({ onSearch, loading }) {
       <div className="card-body p-6">
         {/* Hero text */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl lg:text-3xl font-bold text-base-content leading-tight">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-base-content leading-tight">
             Identifie les entreprises{' '}
             <span className="text-primary">sans site web</span>
           </h1>
-          <p className="text-base-content/60 text-sm mt-2 font-normal">
+          <p className="text-base-content/60 text-xs sm:text-sm mt-2 font-normal">
             Utilise OpenStreetMap pour trouver tes prochains clients. Gratuit, sans limite.
           </p>
         </div>

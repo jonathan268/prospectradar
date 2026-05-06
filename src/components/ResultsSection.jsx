@@ -22,8 +22,8 @@ export default function ResultsSection({ results, searchParams }) {
   return (
     <div className="mt-8 space-y-5">
       {/* Stats + Export bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <div className="flex items-center gap-2 bg-base-200 rounded-xl px-4 py-2 border border-base-300">
             <Building2 className="w-4 h-4 text-primary" />
             <span className="text-sm font-semibold text-base-content">
@@ -66,7 +66,7 @@ export default function ResultsSection({ results, searchParams }) {
       </p>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {results.map((prospect) => (
           <ProspectCard key={prospect.id} prospect={prospect} />
         ))}

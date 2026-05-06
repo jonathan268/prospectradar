@@ -19,7 +19,7 @@ export default function Header() {
         </div>
       </div>
       <div className="flex-none">
-        <div className="badge badge-success badge-outline text-xs font-medium gap-1">
+        <div className="hidden sm:flex badge badge-success badge-outline text-xs font-medium gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-success inline-block"></span>
           Gratuit &amp; Open Source
         </div>
