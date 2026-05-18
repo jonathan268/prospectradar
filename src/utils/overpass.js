@@ -1,14 +1,14 @@
 import { CATEGORIES, getOsmLabel } from './categories'
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
+const queryCache = new Map()
 
-function buildOverpassQuery(lat, lon, radiusM, categoryId) {
+function buildOverpassQuery(lat, lon, radiusM, categoryIds) {
   const around = `(around:${radiusM},${lat},${lon})`
 
-  let filterLines = []
+  const ids = Array.isArray(categoryIds) ? categoryIds : [categoryIds || 'all']
 
-  if (categoryId === 'all') {
-    // Union de toutes les catégories commerciales courantes
+  if (ids.includes('all')) {
     const allFilters = [
       `["name"]["shop"]`,
       `["name"]["amenity"~"^(restaurant|cafe|bar|fast_food|pub|pharmacy|doctors|dentist|clinic|bank|bureau_de_change|driving_school|language_school)$"]`,
@@ -16,24 +16,41 @@ function buildOverpassQuery(lat, lon, radiusM, categoryId) {
       `["name"]["craft"]`,
       `["name"]["leisure"~"^(fitness_centre|sports_centre|gym)$"]`,
     ]
-    for (const f of allFilters) {
-      filterLines.push(`  node${f}${around};`)
-      filterLines.push(`  way${f}${around};`)
-    }
-  } else {
-    const cat = CATEGORIES.find((c) => c.id === categoryId)
-    if (!cat) return null
-
-    const filter = `["name"]["${cat.key}"~"^(${cat.value})$"]`
-    filterLines.push(`  node${filter}${around};`)
-    filterLines.push(`  way${filter}${around};`)
+    const filterLines = allFilters.flatMap((f) => [
+      `  node${f}${around};`,
+      `  way${f}${around};`,
+    ])
+    return `[out:json][timeout:60];
+(
+${filterLines.join('\n')}
+);
+out center;`
   }
+
+  const filterLines = ids.flatMap((id) => {
+    const cat = CATEGORIES.find((c) => c.id === id)
+    if (!cat) return []
+    const filter = `["name"]["${cat.key}"~"^(${cat.value})$"]`
+    return [
+      `  node${filter}${around};`,
+      `  way${filter}${around};`,
+    ]
+  })
+
+  if (filterLines.length === 0) return null
 
   return `[out:json][timeout:60];
 (
 ${filterLines.join('\n')}
 );
 out center;`
+}
+
+function buildProspectId(el) {
+  const tags = el.tags || {}
+  const osmType = el.type || 'node'
+  const name = (tags.name || '').trim().toLowerCase()
+  return `${osmType}/${el.id}`
 }
 
 function buildAddress(tags) {
@@ -58,8 +75,12 @@ function extractPhone(tags) {
   )
 }
 
-export async function fetchProspects(lat, lon, radiusM, categoryId) {
-  const query = buildOverpassQuery(lat, lon, radiusM, categoryId)
+export async function fetchProspects(lat, lon, radiusM, categoryIds) {
+  const cacheKey = `${lat}|${lon}|${radiusM}|${(Array.isArray(categoryIds) ? categoryIds : [categoryIds || 'all']).join(',')}`
+  const cached = queryCache.get(cacheKey)
+  if (cached) return cached
+
+  const query = buildOverpassQuery(lat, lon, radiusM, categoryIds)
   if (!query) throw new Error('Catégorie invalide')
 
   const response = await fetch(OVERPASS_URL, {
@@ -87,7 +108,8 @@ export async function fetchProspects(lat, lon, radiusM, categoryId) {
     .map((el) => {
       const tags = el.tags || {}
       return {
-        id: el.id,
+        id: buildProspectId(el),
+        osmId: el.id,
         name: tags.name,
         phone: extractPhone(tags),
         address: buildAddress(tags),
@@ -98,9 +120,8 @@ export async function fetchProspects(lat, lon, radiusM, categoryId) {
       }
     })
     .filter((p) => p.name)
-    // Dédoublonnage par nom + adresse approximative
     .reduce((acc, cur) => {
-      const key = `${cur.name.toLowerCase().trim()}`
+      const key = `${cur.name.toLowerCase().trim()}|${(cur.address || '').toLowerCase().trim().slice(0, 20)}`
       if (!acc.map.has(key)) {
         acc.map.set(key, true)
         acc.list.push(cur)
@@ -109,5 +130,10 @@ export async function fetchProspects(lat, lon, radiusM, categoryId) {
     }, { map: new Map(), list: [] })
     .list
 
+  queryCache.set(cacheKey, prospects)
   return prospects
+}
+
+export function clearQueryCache() {
+  queryCache.clear()
 }
